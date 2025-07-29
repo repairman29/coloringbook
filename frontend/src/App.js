@@ -7,12 +7,12 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   
-  // Processing options
+  // Processing options with better defaults
   const [method, setMethod] = useState("canny");
   const [enhanceQuality, setEnhanceQuality] = useState(true);
   const [removeNoise, setRemoveNoise] = useState(true);
   const [outlineThickness, setOutlineThickness] = useState(1);
-  const [minNoiseArea, setMinNoiseArea] = useState(30);
+  const [minNoiseArea, setMinNoiseArea] = useState(20);
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
@@ -176,11 +176,16 @@ export default function App() {
                 <input
                   type="range"
                   min="1"
-                  max="5"
+                  max="3"
                   value={outlineThickness}
                   onChange={(e) => setOutlineThickness(parseInt(e.target.value))}
                   className="w-full"
                 />
+                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <span>Thin</span>
+                  <span>Medium</span>
+                  <span>Thick</span>
+                </div>
               </div>
 
               {/* Noise Area */}
@@ -191,11 +196,15 @@ export default function App() {
                 <input
                   type="range"
                   min="10"
-                  max="100"
+                  max="50"
                   value={minNoiseArea}
                   onChange={(e) => setMinNoiseArea(parseInt(e.target.value))}
                   className="w-full"
                 />
+                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <span>Less Filtering</span>
+                  <span>More Filtering</span>
+                </div>
               </div>
             </div>
 
@@ -260,6 +269,29 @@ export default function App() {
                 <p className="text-sm text-gray-600 mt-1">{m.description}</p>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Tips Section */}
+        <div className="mt-8 bg-blue-50 rounded-lg shadow-md p-6">
+          <h3 className="text-xl font-semibold mb-4 text-blue-800">Tips for Best Results</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-700">
+            <div>
+              <h4 className="font-medium mb-2">Image Quality</h4>
+              <ul className="space-y-1">
+                <li>• Use high-contrast images for best results</li>
+                <li>• Avoid very dark or very bright images</li>
+                <li>• Clear, well-lit photos work best</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-medium mb-2">Processing Tips</h4>
+              <ul className="space-y-1">
+                <li>• Start with "Canny" method for most images</li>
+                <li>• Use "Adaptive" for uneven lighting</li>
+                <li>• Try "Cartoon" for artistic effects</li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>

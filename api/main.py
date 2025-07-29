@@ -18,7 +18,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def apply_bilateral_filter(image, d=15, sigma_color=75, sigma_space=75):
+def apply_bilateral_filter(image, d=9, sigma_color=75, sigma_space=75):
     """Apply bilateral filter to reduce noise while preserving edges"""
     return cv2.bilateralFilter(image, d, sigma_color, sigma_space)
 
@@ -26,7 +26,7 @@ def apply_adaptive_threshold(image, block_size=11, c=2):
     """Apply adaptive thresholding for better edge detection"""
     return cv2.adaptiveThreshold(image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, block_size, c)
 
-def apply_morphological_operations(image, kernel_size=3):
+def apply_morphological_operations(image, kernel_size=2):
     """Apply morphological operations to clean up the image"""
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernel_size, kernel_size))
     # Remove small noise
@@ -37,11 +37,11 @@ def apply_morphological_operations(image, kernel_size=3):
 
 def enhance_contrast(image):
     """Enhance contrast using CLAHE (Contrast Limited Adaptive Histogram Equalization)"""
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+    clahe = cv2.createCLAHE(clipLimit=1.5, tileGridSize=(8,8))
     return clahe.apply(image)
 
-def detect_edges_canny(image, low_threshold=50, high_threshold=150):
-    """Detect edges using Canny algorithm"""
+def detect_edges_canny(image, low_threshold=30, high_threshold=100):
+    """Detect edges using Canny algorithm with better thresholds"""
     return cv2.Canny(image, low_threshold, high_threshold)
 
 def detect_edges_sobel(image):
@@ -49,19 +49,30 @@ def detect_edges_sobel(image):
     sobelx = cv2.Sobel(image, cv2.CV_64F, 1, 0, ksize=3)
     sobely = cv2.Sobel(image, cv2.CV_64F, 0, 1, ksize=3)
     magnitude = np.sqrt(sobelx**2 + sobely**2)
-    return np.uint8(magnitude)
+    # Normalize and threshold
+    magnitude = cv2.normalize(magnitude, None, 0, 255, cv2.NORM_MINMAX)
+    magnitude = np.uint8(magnitude)
+    # Apply threshold to get clean edges
+    _, magnitude = cv2.threshold(magnitude, 50, 255, cv2.THRESH_BINARY)
+    return magnitude
 
 def detect_edges_laplacian(image):
     """Detect edges using Laplacian operator"""
     laplacian = cv2.Laplacian(image, cv2.CV_64F)
-    return np.uint8(np.absolute(laplacian))
+    laplacian = np.absolute(laplacian)
+    laplacian = np.uint8(laplacian)
+    # Apply threshold to get clean edges
+    _, laplacian = cv2.threshold(laplacian, 30, 255, cv2.THRESH_BINARY)
+    return laplacian
 
-def create_outline_effect(image, thickness=2):
+def create_outline_effect(image, thickness=1):
     """Create outline effect by dilating edges"""
+    if thickness <= 1:
+        return image
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (thickness, thickness))
     return cv2.dilate(image, kernel, iterations=1)
 
-def remove_background_noise(image, min_area=50):
+def remove_background_noise(image, min_area=20):
     """Remove small noise by filtering contours by area"""
     contours, _ = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     mask = np.zeros_like(image)
@@ -90,13 +101,13 @@ def apply_cartoon_effect(image):
     return cartoon
 
 def process_image_advanced(image, method="canny", enhance_quality=True, remove_noise=True, 
-                          outline_thickness=1, min_noise_area=30):
+                          outline_thickness=1, min_noise_area=20):
     """Advanced image processing with multiple options"""
     
     # Convert to grayscale
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     
-    # Enhance contrast
+    # Enhance contrast (use more conservative settings)
     if enhance_quality:
         gray = enhance_contrast(gray)
     
@@ -118,12 +129,12 @@ def process_image_advanced(image, method="canny", enhance_quality=True, remove_n
     else:
         edges = detect_edges_canny(gray)
     
-    # Remove small noise
+    # Remove small noise (use smaller threshold)
     if remove_noise:
         edges = remove_background_noise(edges, min_noise_area)
     
-    # Apply morphological operations to clean up
-    edges = apply_morphological_operations(edges)
+    # Apply morphological operations to clean up (use smaller kernel)
+    edges = apply_morphological_operations(edges, kernel_size=2)
     
     # Create outline effect
     if outline_thickness > 1:
@@ -141,8 +152,8 @@ async def convert_image(
     method: str = Query("canny", description="Edge detection method: canny, sobel, laplacian, adaptive, cartoon"),
     enhance_quality: bool = Query(True, description="Enhance image quality"),
     remove_noise: bool = Query(True, description="Remove background noise"),
-    outline_thickness: int = Query(1, ge=1, le=5, description="Outline thickness (1-5)"),
-    min_noise_area: int = Query(30, ge=10, le=100, description="Minimum noise area to remove (10-100)")
+    outline_thickness: int = Query(1, ge=1, le=3, description="Outline thickness (1-3)"),
+    min_noise_area: int = Query(20, ge=10, le=50, description="Minimum noise area to remove (10-50)")
 ):
     """
     Convert image to coloring page with advanced processing options.
