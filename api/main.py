@@ -40,6 +40,116 @@ def resize_image_if_needed(image, max_width=1200, max_height=1200):
     resized = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_AREA)
     return resized
 
+def enhance_image_preprocessing(image):
+    """Enhanced preprocessing for better results"""
+    # Convert to LAB color space for better processing
+    lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
+    
+    # Enhance contrast in L channel
+    l, a, b = cv2.split(lab)
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+    l = clahe.apply(l)
+    
+    # Merge channels back
+    enhanced = cv2.merge([l, a, b])
+    enhanced = cv2.cvtColor(enhanced, cv2.COLOR_LAB2BGR)
+    
+    # Apply bilateral filter to reduce noise while preserving edges
+    enhanced = cv2.bilateralFilter(enhanced, 9, 75, 75)
+    
+    return enhanced
+
+def detect_contours_advanced(image):
+    """Advanced contour detection for better line art"""
+    # Convert to grayscale
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    
+    # Apply adaptive histogram equalization
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+    gray = clahe.apply(gray)
+    
+    # Apply bilateral filter
+    gray = cv2.bilateralFilter(gray, 9, 75, 75)
+    
+    # Detect edges using Canny
+    edges = cv2.Canny(gray, 30, 100)
+    
+    # Find contours
+    contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    # Create blank canvas
+    result = np.ones_like(gray) * 255
+    
+    # Draw contours with different thicknesses based on area
+    for contour in contours:
+        area = cv2.contourArea(contour)
+        if area > 50:  # Filter small noise
+            # Thickness based on contour area
+            thickness = max(1, min(3, int(area / 1000)))
+            cv2.drawContours(result, [contour], -1, 0, thickness)
+    
+    return result
+
+def apply_sketch_effect(image):
+    """Apply sketch-like effect for artistic results"""
+    # Convert to grayscale
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    
+    # Invert the image
+    inverted = cv2.bitwise_not(gray)
+    
+    # Apply Gaussian blur
+    blurred = cv2.GaussianBlur(inverted, (21, 21), 0)
+    
+    # Blend the images
+    sketch = cv2.divide(gray, 255 - blurred, scale=256)
+    
+    # Apply threshold to get clean lines
+    _, sketch = cv2.threshold(sketch, 240, 255, cv2.THRESH_BINARY)
+    
+    return sketch
+
+def apply_watercolor_effect(image):
+    """Apply watercolor-like effect for artistic coloring pages"""
+    # Convert to grayscale
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    
+    # Apply bilateral filter for smoothing
+    smooth = cv2.bilateralFilter(gray, 9, 75, 75)
+    
+    # Apply median blur
+    smooth = cv2.medianBlur(smooth, 7)
+    
+    # Detect edges
+    edges = cv2.adaptiveThreshold(smooth, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 9, 2)
+    
+    # Apply morphological operations
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    edges = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
+    
+    return edges
+
+def apply_anime_style(image):
+    """Apply anime/manga style line art"""
+    # Convert to grayscale
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    
+    # Apply bilateral filter
+    smooth = cv2.bilateralFilter(gray, 9, 75, 75)
+    
+    # Detect edges with different methods
+    edges1 = cv2.Canny(smooth, 50, 150)
+    edges2 = cv2.adaptiveThreshold(smooth, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+    
+    # Combine edges
+    combined = cv2.bitwise_or(edges1, edges2)
+    
+    # Apply morphological operations
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2, 2))
+    combined = cv2.morphologyEx(combined, cv2.MORPH_CLOSE, kernel)
+    
+    return combined
+
 def apply_bilateral_filter(image, d=9, sigma_color=75, sigma_space=75):
     """Apply bilateral filter to reduce noise while preserving edges"""
     return cv2.bilateralFilter(image, d, sigma_color, sigma_space)
@@ -122,48 +232,69 @@ def apply_cartoon_effect(image):
     
     return cartoon
 
-def process_image_advanced(image, method="canny", enhance_quality=True, remove_noise=True, 
+def process_image_advanced(image, method="contours", enhance_quality=True, remove_noise=True, 
                           outline_thickness=1, min_noise_area=20):
     """Advanced image processing with multiple options"""
     
-    # Convert to grayscale
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    
-    # Enhance contrast (use more conservative settings)
+    # Enhanced preprocessing
     if enhance_quality:
-        gray = enhance_contrast(gray)
+        image = enhance_image_preprocessing(image)
     
-    # Apply bilateral filter to reduce noise while preserving edges
-    if remove_noise:
-        gray = apply_bilateral_filter(gray)
-    
-    # Detect edges based on method
-    if method == "canny":
-        edges = detect_edges_canny(gray)
+    # Process based on method
+    if method == "contours":
+        result = detect_contours_advanced(image)
+    elif method == "sketch":
+        result = apply_sketch_effect(image)
+    elif method == "watercolor":
+        result = apply_watercolor_effect(image)
+    elif method == "anime":
+        result = apply_anime_style(image)
+    elif method == "canny":
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        if enhance_quality:
+            gray = enhance_contrast(gray)
+        if remove_noise:
+            gray = apply_bilateral_filter(gray)
+        result = detect_edges_canny(gray)
     elif method == "sobel":
-        edges = detect_edges_sobel(gray)
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        if enhance_quality:
+            gray = enhance_contrast(gray)
+        if remove_noise:
+            gray = apply_bilateral_filter(gray)
+        result = detect_edges_sobel(gray)
     elif method == "laplacian":
-        edges = detect_edges_laplacian(gray)
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        if enhance_quality:
+            gray = enhance_contrast(gray)
+        if remove_noise:
+            gray = apply_bilateral_filter(gray)
+        result = detect_edges_laplacian(gray)
     elif method == "adaptive":
-        edges = apply_adaptive_threshold(gray)
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        if enhance_quality:
+            gray = enhance_contrast(gray)
+        if remove_noise:
+            gray = apply_bilateral_filter(gray)
+        result = apply_adaptive_threshold(gray)
     elif method == "cartoon":
         return apply_cartoon_effect(image)
     else:
-        edges = detect_edges_canny(gray)
+        result = detect_contours_advanced(image)
     
-    # Remove small noise (use smaller threshold)
+    # Remove small noise
     if remove_noise:
-        edges = remove_background_noise(edges, min_noise_area)
+        result = remove_background_noise(result, min_noise_area)
     
-    # Apply morphological operations to clean up (use smaller kernel)
-    edges = apply_morphological_operations(edges, kernel_size=2)
+    # Apply morphological operations to clean up
+    result = apply_morphological_operations(result, kernel_size=2)
     
     # Create outline effect
     if outline_thickness > 1:
-        edges = create_outline_effect(edges, outline_thickness)
+        result = create_outline_effect(result, outline_thickness)
     
     # Invert the image (white background, black lines)
-    result = cv2.bitwise_not(edges)
+    result = cv2.bitwise_not(result)
     
     return result
 
@@ -208,34 +339,34 @@ async def generate_previews(
         # Define processing methods with their configurations
         methods = [
             {
+                "name": "contours",
+                "label": "Advanced Contours",
+                "description": "Best for most images - uses contour detection",
+                "params": {"method": "contours"}
+            },
+            {
+                "name": "sketch",
+                "label": "Sketch Effect", 
+                "description": "Artistic sketch-like lines",
+                "params": {"method": "sketch"}
+            },
+            {
+                "name": "watercolor",
+                "label": "Watercolor Style",
+                "description": "Soft, artistic watercolor effect",
+                "params": {"method": "watercolor"}
+            },
+            {
+                "name": "anime",
+                "label": "Anime/Manga Style",
+                "description": "Clean anime-style line art",
+                "params": {"method": "anime"}
+            },
+            {
                 "name": "canny",
                 "label": "Canny Edge Detection",
-                "description": "Best for most images",
+                "description": "Traditional edge detection",
                 "params": {"method": "canny"}
-            },
-            {
-                "name": "sobel",
-                "label": "Sobel Operator", 
-                "description": "Good for gradient-based edges",
-                "params": {"method": "sobel"}
-            },
-            {
-                "name": "laplacian",
-                "label": "Laplacian Operator",
-                "description": "Detects all edges",
-                "params": {"method": "laplacian"}
-            },
-            {
-                "name": "adaptive",
-                "label": "Adaptive Thresholding",
-                "description": "Good for varying lighting",
-                "params": {"method": "adaptive"}
-            },
-            {
-                "name": "cartoon",
-                "label": "Cartoon Effect",
-                "description": "Artistic style",
-                "params": {"method": "cartoon"}
             }
         ]
         
@@ -285,7 +416,7 @@ async def generate_previews(
 async def convert_image(
     image: UploadFile = File(None), 
     url: str = Form(None),
-    method: str = Query("canny", description="Edge detection method: canny, sobel, laplacian, adaptive, cartoon"),
+    method: str = Query("contours", description="Processing method: contours, sketch, watercolor, anime, canny, sobel, laplacian, adaptive, cartoon"),
     enhance_quality: bool = Query(True, description="Enhance image quality"),
     remove_noise: bool = Query(True, description="Remove background noise"),
     outline_thickness: int = Query(1, ge=1, le=3, description="Outline thickness (1-3)"),
@@ -295,7 +426,11 @@ async def convert_image(
     Convert image to coloring page with advanced processing options.
     
     Methods:
-    - canny: Canny edge detection (default)
+    - contours: Advanced contour detection (recommended)
+    - sketch: Artistic sketch effect
+    - watercolor: Soft watercolor style
+    - anime: Clean anime/manga style
+    - canny: Traditional Canny edge detection
     - sobel: Sobel operator edge detection
     - laplacian: Laplacian operator edge detection
     - adaptive: Adaptive thresholding
@@ -343,29 +478,29 @@ async def get_available_methods():
     return {
         "methods": [
             {
+                "name": "contours",
+                "description": "Advanced contour detection - best for most images",
+                "parameters": ["enhance_quality", "remove_noise"]
+            },
+            {
+                "name": "sketch",
+                "description": "Artistic sketch effect - creates hand-drawn look",
+                "parameters": ["enhance_quality"]
+            },
+            {
+                "name": "watercolor",
+                "description": "Soft watercolor style - artistic and smooth",
+                "parameters": ["enhance_quality"]
+            },
+            {
+                "name": "anime",
+                "description": "Clean anime/manga style - crisp lines",
+                "parameters": ["enhance_quality", "remove_noise"]
+            },
+            {
                 "name": "canny",
-                "description": "Canny edge detection - best for most images",
+                "description": "Traditional Canny edge detection",
                 "parameters": ["low_threshold", "high_threshold"]
-            },
-            {
-                "name": "sobel",
-                "description": "Sobel operator - good for gradient-based edges",
-                "parameters": ["kernel_size"]
-            },
-            {
-                "name": "laplacian",
-                "description": "Laplacian operator - detects all edges",
-                "parameters": ["kernel_size"]
-            },
-            {
-                "name": "adaptive",
-                "description": "Adaptive thresholding - good for varying lighting",
-                "parameters": ["block_size", "c"]
-            },
-            {
-                "name": "cartoon",
-                "description": "Cartoon-like effect - artistic style",
-                "parameters": ["bilateral_filter", "median_blur"]
             }
         ]
     }
@@ -375,7 +510,7 @@ async def root():
     """Root endpoint with API information"""
     return {
         "message": "Enhanced Coloring Page Converter API",
-        "version": "2.1",
+        "version": "3.0",
         "endpoints": {
             "POST /api/preview": "Generate multiple previews for comparison",
             "POST /api/convert": "Convert image to coloring page",

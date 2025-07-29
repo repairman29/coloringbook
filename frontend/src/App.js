@@ -124,18 +124,18 @@ export default function App() {
   };
 
   const processingMethods = [
-    { value: "canny", label: "Canny Edge Detection", description: "Best for most images" },
-    { value: "sobel", label: "Sobel Operator", description: "Good for gradient-based edges" },
-    { value: "laplacian", label: "Laplacian Operator", description: "Detects all edges" },
-    { value: "adaptive", label: "Adaptive Thresholding", description: "Good for varying lighting" },
-    { value: "cartoon", label: "Cartoon Effect", description: "Artistic style" },
+    { value: "contours", label: "Advanced Contours", description: "Best for most images - uses contour detection" },
+    { value: "sketch", label: "Sketch Effect", description: "Artistic sketch-like lines" },
+    { value: "watercolor", label: "Watercolor Style", description: "Soft, artistic watercolor effect" },
+    { value: "anime", label: "Anime/Manga Style", description: "Clean anime-style line art" },
+    { value: "canny", label: "Canny Edge Detection", description: "Traditional edge detection" },
   ];
 
   return (
     <div className="min-h-screen p-6 bg-gray-100">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-4xl font-bold text-center mb-8 text-gray-800">
-          Enhanced Coloring Page Converter
+          Advanced Coloring Page Converter
         </h1>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -381,12 +381,25 @@ export default function App() {
             <div>
               <h4 className="font-medium mb-2">Processing Tips</h4>
               <ul className="space-y-1">
-                <li>• Generate all previews to compare methods</li>
-                <li>• Click on the preview you like best</li>
-                <li>• Try different outline thickness settings</li>
-                <li>• Large images are automatically resized</li>
+                <li>• Try "Advanced Contours" first for best results</li>
+                <li>• Use "Sketch Effect" for artistic hand-drawn look</li>
+                <li>• "Anime Style" works great for clean line art</li>
+                <li>• "Watercolor" creates soft, artistic effects</li>
               </ul>
             </div>
+          </div>
+        </div>
+
+        {/* Method Descriptions */}
+        <div className="mt-8 bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-xl font-semibold mb-4 text-gray-700">Processing Methods</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {processingMethods.map((m) => (
+              <div key={m.value} className="p-4 border border-gray-200 rounded-md">
+                <h4 className="font-medium text-gray-800">{m.label}</h4>
+                <p className="text-sm text-gray-600 mt-1">{m.description}</p>
+              </div>
+            ))}
           </div>
         </div>
       </div>
