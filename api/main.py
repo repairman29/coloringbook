@@ -1,9 +1,6 @@
 from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from PIL import Image, ImageFilter, ImageOps
-import numpy as np
-from io import BytesIO
 import requests
 import logging
 
@@ -38,33 +35,15 @@ async def convert_image(image: UploadFile = File(None), url: str = Form(None)):
             logger.error("No image or URL provided")
             return {"error": "No image or URL provided"}
 
-        logger.info("Opening image with PIL...")
-        img = Image.open(BytesIO(contents))
-        logger.info(f"Image opened successfully, size: {img.size}, mode: {img.mode}")
+        # For now, return a simple response indicating the image was received
+        # We'll implement actual processing once the basic API works
+        logger.info("Image received successfully")
         
-        # Convert to RGB if necessary
-        if img.mode != 'RGB':
-            img = img.convert('RGB')
-        
-        logger.info("Converting to grayscale...")
-        gray = img.convert('L')
-        
-        logger.info("Applying edge detection...")
-        # Use PIL's edge detection filter
-        edges = gray.filter(ImageFilter.FIND_EDGES)
-        
-        logger.info("Inverting edges...")
-        inverted = ImageOps.invert(edges)
-
-        logger.info("Encoding to PNG...")
-        output_buffer = BytesIO()
-        inverted.save(output_buffer, format='PNG')
-        output_buffer.seek(0)
-        
-        logger.info(f"PNG encoded, size: {len(output_buffer.getvalue())} bytes")
-        logger.info("Returning streaming response...")
-        
-        return StreamingResponse(output_buffer, media_type="image/png")
+        return {
+            "message": "Image received successfully",
+            "size": len(contents),
+            "status": "processing_placeholder"
+        }
         
     except Exception as e:
         logger.error(f"Error processing image: {str(e)}")
