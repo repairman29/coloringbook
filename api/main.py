@@ -24,6 +24,11 @@ app.add_middleware(
 # Initialize OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+@app.get("/api/test")
+async def test_endpoint():
+    """Simple test endpoint to verify the API is working"""
+    return {"message": "API is working!", "status": "success"}
+
 def resize_image_if_needed(image, max_width=1200, max_height=1200):
     """Resize image if it's too large to prevent memory issues"""
     height, width = image.shape[:2]
