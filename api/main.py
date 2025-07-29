@@ -1,7 +1,7 @@
 from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-import cv2
+from PIL import Image, ImageFilter, ImageOps
 import numpy as np
 from io import BytesIO
 import requests
@@ -38,37 +38,33 @@ async def convert_image(image: UploadFile = File(None), url: str = Form(None)):
             logger.error("No image or URL provided")
             return {"error": "No image or URL provided"}
 
-        logger.info("Converting to numpy array...")
-        nparr = np.frombuffer(contents, np.uint8)
-        logger.info(f"Numpy array shape: {nparr.shape}")
+        logger.info("Opening image with PIL...")
+        img = Image.open(BytesIO(contents))
+        logger.info(f"Image opened successfully, size: {img.size}, mode: {img.mode}")
         
-        logger.info("Decoding image with OpenCV...")
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        if img is None:
-            logger.error("Failed to decode image")
-            return {"error": "Failed to decode image"}
+        # Convert to RGB if necessary
+        if img.mode != 'RGB':
+            img = img.convert('RGB')
         
-        logger.info(f"Image decoded successfully, shape: {img.shape}")
-
-        # Original simple approach that worked well
         logger.info("Converting to grayscale...")
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        gray = img.convert('L')
         
-        logger.info("Applying Gaussian blur...")
-        blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-        
-        logger.info("Detecting edges with Canny...")
-        edges = cv2.Canny(blurred, 50, 150)
+        logger.info("Applying edge detection...")
+        # Use PIL's edge detection filter
+        edges = gray.filter(ImageFilter.FIND_EDGES)
         
         logger.info("Inverting edges...")
-        inverted = cv2.bitwise_not(edges)
+        inverted = ImageOps.invert(edges)
 
         logger.info("Encoding to PNG...")
-        _, buffer = cv2.imencode('.png', inverted)
-        logger.info(f"PNG encoded, size: {len(buffer)} bytes")
+        output_buffer = BytesIO()
+        inverted.save(output_buffer, format='PNG')
+        output_buffer.seek(0)
         
+        logger.info(f"PNG encoded, size: {len(output_buffer.getvalue())} bytes")
         logger.info("Returning streaming response...")
-        return StreamingResponse(BytesIO(buffer.tobytes()), media_type="image/png")
+        
+        return StreamingResponse(output_buffer, media_type="image/png")
         
     except Exception as e:
         logger.error(f"Error processing image: {str(e)}")
@@ -77,3 +73,7 @@ async def convert_image(image: UploadFile = File(None), url: str = Form(None)):
 @app.get("/")
 async def root():
     return {"message": "Coloring Page Converter API", "version": "1.0"}
+
+@app.get("/api/test")
+async def test():
+    return {"message": "API is working!", "status": "success"}
