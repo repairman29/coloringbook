@@ -6,12 +6,11 @@ import numpy as np
 from io import BytesIO
 import requests
 from typing import Optional, List, Dict
-import math
 import base64
 import os
 
 app = FastAPI(title="AI-Enhanced Coloring Page Converter", 
-              description="Convert images to coloring pages using AI and advanced computer vision")
+              description="Convert images to coloring pages using advanced computer vision")
 
 app.add_middleware(
     CORSMiddleware,
