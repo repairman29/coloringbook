@@ -8,9 +8,11 @@ import requests
 from typing import Optional, List, Dict
 import math
 import base64
+import os
+from openai import OpenAI
 
-app = FastAPI(title="Enhanced Coloring Page Converter", 
-              description="Convert images to coloring pages with multiple processing options")
+app = FastAPI(title="AI-Enhanced Coloring Page Converter", 
+              description="Convert images to coloring pages using AI and advanced computer vision")
 
 app.add_middleware(
     CORSMiddleware,
@@ -18,6 +20,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Initialize OpenAI client
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def resize_image_if_needed(image, max_width=1200, max_height=1200):
     """Resize image if it's too large to prevent memory issues"""
@@ -304,6 +309,86 @@ def image_to_base64(image):
     img_base64 = base64.b64encode(buffer).decode('utf-8')
     return img_base64
 
+def generate_ai_coloring_page(prompt, style="line_art", complexity="medium"):
+    """Generate coloring page using OpenAI DALL-E 3"""
+    try:
+        # Create style-specific prompts
+        style_prompts = {
+            "line_art": "black and white line art coloring page",
+            "sketch": "hand-drawn sketch style coloring page",
+            "cartoon": "cartoon style line art coloring page",
+            "anime": "anime/manga style line art coloring page",
+            "simple": "simple minimalist line art coloring page",
+            "detailed": "detailed intricate line art coloring page"
+        }
+        
+        complexity_modifiers = {
+            "simple": "with very simple lines, minimal detail, suitable for young children",
+            "medium": "with clear, well-defined lines and moderate detail",
+            "complex": "with intricate details and fine lines, suitable for older children and adults"
+        }
+        
+        # Build the full prompt
+        style_prompt = style_prompts.get(style, style_prompts["line_art"])
+        complexity_modifier = complexity_modifiers.get(complexity, complexity_modifiers["medium"])
+        
+        full_prompt = f"Create a {style_prompt} of {prompt}. {complexity_modifier}. Clean, crisp lines, no shading, pure black lines on white background. Perfect for coloring."
+        
+        # Generate image using DALL-E 3
+        response = client.images.generate(
+            model="dall-e-3",
+            prompt=full_prompt,
+            size="1024x1024",
+            quality="standard",
+            n=1,
+        )
+        
+        # Get the image URL
+        image_url = response.data[0].url
+        
+        # Download the image
+        img_response = requests.get(image_url)
+        img_array = np.frombuffer(img_response.content, np.uint8)
+        img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+        
+        # Convert to grayscale and enhance for coloring page
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        
+        # Apply threshold to ensure clean black and white
+        _, binary = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
+        
+        # Invert to get black lines on white background
+        result = cv2.bitwise_not(binary)
+        
+        return result
+        
+    except Exception as e:
+        raise Exception(f"AI generation failed: {str(e)}")
+
+@app.post("/api/generate-ai")
+async def generate_ai_coloring_page_endpoint(
+    prompt: str = Form(..., description="Description of what to create (e.g., 'a cat playing with yarn')"),
+    style: str = Query("line_art", description="Art style: line_art, sketch, cartoon, anime, simple, detailed"),
+    complexity: str = Query("medium", description="Complexity level: simple, medium, complex")
+):
+    """
+    Generate a coloring page using AI (DALL-E 3).
+    Requires OPENAI_API_KEY environment variable to be set.
+    """
+    
+    if not os.getenv("OPENAI_API_KEY"):
+        return {"error": "OpenAI API key not configured. Please set OPENAI_API_KEY environment variable."}
+    
+    try:
+        result = generate_ai_coloring_page(prompt, style, complexity)
+        
+        # Encode the result
+        _, buffer = cv2.imencode('.png', result)
+        return StreamingResponse(BytesIO(buffer.tobytes()), media_type="image/png")
+        
+    except Exception as e:
+        return {"error": str(e)}
+
 @app.post("/api/preview")
 async def generate_previews(
     image: UploadFile = File(None), 
@@ -502,18 +587,29 @@ async def get_available_methods():
                 "description": "Traditional Canny edge detection",
                 "parameters": ["low_threshold", "high_threshold"]
             }
-        ]
+        ],
+        "ai_generation": {
+            "available": bool(os.getenv("OPENAI_API_KEY")),
+            "endpoint": "/api/generate-ai",
+            "description": "Generate coloring pages using AI (DALL-E 3)"
+        }
     }
 
 @app.get("/")
 async def root():
     """Root endpoint with API information"""
     return {
-        "message": "Enhanced Coloring Page Converter API",
-        "version": "3.0",
+        "message": "AI-Enhanced Coloring Page Converter API",
+        "version": "4.0",
+        "features": {
+            "computer_vision": "Advanced image processing with multiple methods",
+            "ai_generation": "AI-powered coloring page creation using DALL-E 3",
+            "preview_system": "Side-by-side comparison of different methods"
+        },
         "endpoints": {
             "POST /api/preview": "Generate multiple previews for comparison",
             "POST /api/convert": "Convert image to coloring page",
+            "POST /api/generate-ai": "Generate coloring page using AI",
             "GET /api/methods": "Get available processing methods",
             "GET /docs": "API documentation"
         }
