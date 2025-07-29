@@ -1,12 +1,13 @@
 from fastapi import FastAPI, File, UploadFile, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 import cv2
 import numpy as np
 from io import BytesIO
 import requests
-from typing import Optional
+from typing import Optional, List, Dict
 import math
+import base64
 
 app = FastAPI(title="Enhanced Coloring Page Converter", 
               description="Convert images to coloring pages with multiple processing options")
@@ -145,6 +146,117 @@ def process_image_advanced(image, method="canny", enhance_quality=True, remove_n
     
     return result
 
+def image_to_base64(image):
+    """Convert OpenCV image to base64 string"""
+    _, buffer = cv2.imencode('.png', image)
+    img_base64 = base64.b64encode(buffer).decode('utf-8')
+    return img_base64
+
+@app.post("/api/preview")
+async def generate_previews(
+    image: UploadFile = File(None), 
+    url: str = Form(None),
+    enhance_quality: bool = Query(True, description="Enhance image quality"),
+    remove_noise: bool = Query(True, description="Remove background noise"),
+    outline_thickness: int = Query(1, ge=1, le=3, description="Outline thickness (1-3)"),
+    min_noise_area: int = Query(20, ge=10, le=50, description="Minimum noise area to remove (10-50)")
+):
+    """
+    Generate multiple previews with different processing methods for comparison.
+    Returns base64 encoded images for each method.
+    """
+    
+    if image:
+        contents = await image.read()
+    elif url:
+        response = requests.get(url)
+        contents = response.content
+    else:
+        return {"error": "No image or URL provided"}
+
+    try:
+        nparr = np.frombuffer(contents, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if img is None:
+            return {"error": "Invalid image format"}
+        
+        # Define processing methods with their configurations
+        methods = [
+            {
+                "name": "canny",
+                "label": "Canny Edge Detection",
+                "description": "Best for most images",
+                "params": {"method": "canny"}
+            },
+            {
+                "name": "sobel",
+                "label": "Sobel Operator", 
+                "description": "Good for gradient-based edges",
+                "params": {"method": "sobel"}
+            },
+            {
+                "name": "laplacian",
+                "label": "Laplacian Operator",
+                "description": "Detects all edges",
+                "params": {"method": "laplacian"}
+            },
+            {
+                "name": "adaptive",
+                "label": "Adaptive Thresholding",
+                "description": "Good for varying lighting",
+                "params": {"method": "adaptive"}
+            },
+            {
+                "name": "cartoon",
+                "label": "Cartoon Effect",
+                "description": "Artistic style",
+                "params": {"method": "cartoon"}
+            }
+        ]
+        
+        previews = []
+        
+        for method_config in methods:
+            try:
+                # Process image with current method
+                result = process_image_advanced(
+                    img,
+                    method=method_config["params"]["method"],
+                    enhance_quality=enhance_quality,
+                    remove_noise=remove_noise,
+                    outline_thickness=outline_thickness,
+                    min_noise_area=min_noise_area
+                )
+                
+                # Convert to base64
+                img_base64 = image_to_base64(result)
+                
+                previews.append({
+                    "name": method_config["name"],
+                    "label": method_config["label"],
+                    "description": method_config["description"],
+                    "image": img_base64
+                })
+                
+            except Exception as e:
+                # If a method fails, skip it but continue with others
+                previews.append({
+                    "name": method_config["name"],
+                    "label": method_config["label"],
+                    "description": method_config["description"],
+                    "error": str(e)
+                })
+        
+        return {
+            "previews": previews,
+            "total_methods": len(methods),
+            "successful_methods": len([p for p in previews if "image" in p])
+        }
+        
+    except Exception as e:
+        return {"error": f"Processing failed: {str(e)}"}
+
 @app.post("/api/convert")
 async def convert_image(
     image: UploadFile = File(None), 
@@ -238,6 +350,7 @@ async def root():
         "message": "Enhanced Coloring Page Converter API",
         "version": "2.0",
         "endpoints": {
+            "POST /api/preview": "Generate multiple previews for comparison",
             "POST /api/convert": "Convert image to coloring page",
             "GET /api/methods": "Get available processing methods",
             "GET /docs": "API documentation"
