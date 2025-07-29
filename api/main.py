@@ -77,3 +77,7 @@ async def root():
 @app.get("/api/test")
 async def test():
     return {"message": "API is working!", "status": "success"}
+
+@app.get("/api/health")
+async def health():
+    return {"status": "healthy", "message": "Coloring Book API is running"}
