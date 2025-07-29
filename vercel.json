@@ -14,5 +14,11 @@
     { "src": "/api/(.*)", "dest": "/api/main.py" },
     { "src": "/(.*)", "dest": "/frontend/build/$1" },
     { "src": "/", "dest": "/frontend/build/index.html" }
-  ]
+  ],
+  "functions": {
+    "api/main.py": {
+      "maxDuration": 30,
+      "memory": 1024
+    }
+  }
 }

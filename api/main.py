@@ -19,6 +19,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+def resize_image_if_needed(image, max_width=1200, max_height=1200):
+    """Resize image if it's too large to prevent memory issues"""
+    height, width = image.shape[:2]
+    
+    # Check if resizing is needed
+    if width <= max_width and height <= max_height:
+        return image
+    
+    # Calculate new dimensions maintaining aspect ratio
+    aspect_ratio = width / height
+    if width > height:
+        new_width = max_width
+        new_height = int(max_width / aspect_ratio)
+    else:
+        new_height = max_height
+        new_width = int(max_height * aspect_ratio)
+    
+    # Resize the image
+    resized = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_AREA)
+    return resized
+
 def apply_bilateral_filter(image, d=9, sigma_color=75, sigma_space=75):
     """Apply bilateral filter to reduce noise while preserving edges"""
     return cv2.bilateralFilter(image, d, sigma_color, sigma_space)
@@ -181,6 +202,9 @@ async def generate_previews(
         if img is None:
             return {"error": "Invalid image format"}
         
+        # Resize image if it's too large to prevent memory issues
+        img = resize_image_if_needed(img, max_width=1200, max_height=1200)
+        
         # Define processing methods with their configurations
         methods = [
             {
@@ -293,6 +317,9 @@ async def convert_image(
         if img is None:
             return {"error": "Invalid image format"}
         
+        # Resize image if it's too large
+        img = resize_image_if_needed(img, max_width=1200, max_height=1200)
+        
         # Process the image
         result = process_image_advanced(
             img, 
@@ -348,7 +375,7 @@ async def root():
     """Root endpoint with API information"""
     return {
         "message": "Enhanced Coloring Page Converter API",
-        "version": "2.0",
+        "version": "2.1",
         "endpoints": {
             "POST /api/preview": "Generate multiple previews for comparison",
             "POST /api/convert": "Convert image to coloring page",

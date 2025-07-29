@@ -9,6 +9,7 @@ export default function App() {
   const [previews, setPreviews] = useState([]);
   const [showPreviews, setShowPreviews] = useState(false);
   const [selectedMethod, setSelectedMethod] = useState(null);
+  const [imageSize, setImageSize] = useState(null);
   
   // Processing options with better defaults
   const [enhanceQuality, setEnhanceQuality] = useState(true);
@@ -16,15 +17,40 @@ export default function App() {
   const [outlineThickness, setOutlineThickness] = useState(1);
   const [minNoiseArea, setMinNoiseArea] = useState(20);
 
+  const validateImage = (file) => {
+    // Check file size (max 10MB)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      setError("Image file is too large. Please use an image smaller than 10MB.");
+      return false;
+    }
+
+    // Check file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      setError("Please upload a valid image file (JPEG, PNG, GIF, or WebP).");
+      return false;
+    }
+
+    return true;
+  };
+
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    
+    if (!validateImage(file)) {
+      return;
+    }
+
     setImage(file);
     setImageUrl("");
     setError("");
     setPreviews([]);
     setShowPreviews(false);
     setSelectedMethod(null);
+    setImageSize(`${(file.size / 1024 / 1024).toFixed(1)} MB`);
+    
     const reader = new FileReader();
     reader.onloadend = () => setPreview(reader.result);
     reader.readAsDataURL(file);
@@ -57,6 +83,10 @@ export default function App() {
         method: "POST",
         body: formData,
       });
+
+      if (response.status === 413) {
+        throw new Error("Image is too large. Please try a smaller image (under 10MB).");
+      }
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -124,6 +154,9 @@ export default function App() {
                 onChange={handleImageUpload}
                 className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
+              {imageSize && (
+                <p className="text-xs text-gray-500 mt-1">File size: {imageSize}</p>
+              )}
             </div>
 
             {/* URL Input */}
@@ -142,6 +175,7 @@ export default function App() {
                   setPreviews([]);
                   setShowPreviews(false);
                   setSelectedMethod(null);
+                  setImageSize(null);
                 }}
                 className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
@@ -232,6 +266,13 @@ export default function App() {
                 {error}
               </div>
             )}
+
+            {/* Image Size Warning */}
+            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+              <p className="text-sm text-yellow-800">
+                <strong>Note:</strong> Large images will be automatically resized to 1200x1200 pixels for optimal processing.
+              </p>
+            </div>
           </div>
 
           {/* Preview Grid */}
@@ -334,6 +375,7 @@ export default function App() {
                 <li>• Use high-contrast images for best results</li>
                 <li>• Avoid very dark or very bright images</li>
                 <li>• Clear, well-lit photos work best</li>
+                <li>• Keep file size under 10MB</li>
               </ul>
             </div>
             <div>
@@ -342,6 +384,7 @@ export default function App() {
                 <li>• Generate all previews to compare methods</li>
                 <li>• Click on the preview you like best</li>
                 <li>• Try different outline thickness settings</li>
+                <li>• Large images are automatically resized</li>
               </ul>
             </div>
           </div>
