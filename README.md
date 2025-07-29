@@ -14,8 +14,8 @@ A sophisticated web application that converts images to high-quality coloring pa
 ### 🔧 **Advanced Processing Options**
 - **Quality Enhancement** - CLAHE (Contrast Limited Adaptive Histogram Equalization)
 - **Noise Reduction** - Bilateral filtering and morphological operations
-- **Outline Thickness** - Adjustable line thickness (1-5 pixels)
-- **Noise Area Filtering** - Remove small artifacts (10-100 pixel threshold)
+- **Outline Thickness** - Adjustable line thickness (1-3 pixels)
+- **Noise Area Filtering** - Remove small artifacts (10-50 pixel threshold)
 - **Background Noise Removal** - Intelligent contour-based cleaning
 
 ### 🎯 **Image Quality Improvements**
@@ -23,6 +23,13 @@ A sophisticated web application that converts images to high-quality coloring pa
 - **Morphological Operations** - Cleans up small holes and noise
 - **Contrast Enhancement** - Improves visibility of details
 - **Edge Refinement** - Creates smoother, more printable outlines
+
+### 🆕 **NEW: Preview System**
+- **Side-by-Side Comparison** - See all 5 processing methods at once
+- **Click to Select** - Choose the best result by clicking on any preview
+- **Visual Feedback** - Selected preview is highlighted with blue border
+- **One-Click Download** - Download your selected method instantly
+- **Real-time Processing** - All previews generated simultaneously
 
 ## 🚀 **Project Structure**
 
@@ -36,7 +43,7 @@ coloring-page-app/
 │   ├── public/
 │   │   └── index.html       # Main HTML file
 │   ├── src/
-│   │   ├── App.js           # Enhanced React component with processing options
+│   │   ├── App.js           # Enhanced React component with preview system
 │   │   └── index.js         # React entry point
 │   └── package.json         # Frontend dependencies
 ├── requirements.txt         # Python dependencies
@@ -117,6 +124,7 @@ uvicorn api.main:app --host 127.0.0.1 --port 8000 --reload
    - You should see the enhanced FastAPI Swagger UI
 
 3. Test the API endpoints:
+   - Use the `/api/preview` endpoint to generate multiple previews
    - Use the `/api/convert` endpoint with different parameters
    - Try the `/api/methods` endpoint to see available algorithms
 
@@ -164,6 +172,34 @@ git push -u origin main
 
 ## 📡 **API Endpoints**
 
+### POST /api/preview
+
+Generate multiple previews with different processing methods for comparison.
+
+**Parameters:**
+- `image` (file, optional): Image file to upload
+- `url` (string, optional): URL of an image to convert
+- `enhance_quality` (boolean, default: true): Enable quality enhancement
+- `remove_noise` (boolean, default: true): Enable noise removal
+- `outline_thickness` (integer, 1-3, default: 1): Line thickness
+- `min_noise_area` (integer, 10-50, default: 20): Minimum noise area to remove
+
+**Response:**
+```json
+{
+  "previews": [
+    {
+      "name": "canny",
+      "label": "Canny Edge Detection",
+      "description": "Best for most images",
+      "image": "base64_encoded_image_data"
+    }
+  ],
+  "total_methods": 5,
+  "successful_methods": 5
+}
+```
+
 ### POST /api/convert
 
 Converts an image to a coloring page with advanced processing options.
@@ -174,8 +210,8 @@ Converts an image to a coloring page with advanced processing options.
 - `method` (string, default: "canny"): Processing method
 - `enhance_quality` (boolean, default: true): Enable quality enhancement
 - `remove_noise` (boolean, default: true): Enable noise removal
-- `outline_thickness` (integer, 1-5, default: 1): Line thickness
-- `min_noise_area` (integer, 10-100, default: 30): Minimum noise area to remove
+- `outline_thickness` (integer, 1-3, default: 1): Line thickness
+- `min_noise_area` (integer, 10-50, default: 20): Minimum noise area to remove
 
 **Response:**
 - Returns a PNG image with black outlines on white background
@@ -254,8 +290,8 @@ Returns API information and available endpoints.
 - **Morphological Operations**: Cleans up small artifacts
 
 ### Noise Control
-- **Min Noise Area**: Filters out small objects (10-100 pixels)
-- **Outline Thickness**: Adjusts line thickness (1-5 pixels)
+- **Min Noise Area**: Filters out small objects (10-50 pixels)
+- **Outline Thickness**: Adjusts line thickness (1-3 pixels)
 - **Background Cleaning**: Removes isolated noise pixels
 
 ## 🛠 **Technologies Used**
@@ -311,15 +347,15 @@ Returns API information and available endpoints.
 
 This project is open source and available under the MIT License.
 
-## 🌟 **What's New in v2.0**
+## 🌟 **What's New in v2.1**
 
-- ✨ **5 Processing Methods**: Canny, Sobel, Laplacian, Adaptive, Cartoon
-- 🔧 **Advanced Parameters**: Quality enhancement, noise removal, outline thickness
-- 🎨 **Better UI**: Modern interface with real-time parameter adjustment
-- 📱 **Responsive Design**: Works on desktop and mobile devices
-- 🚀 **Improved Performance**: Optimized algorithms and caching
-- 📊 **API Documentation**: Comprehensive endpoint documentation
-- 🎯 **Better Results**: Enhanced image quality and cleaner outlines
+- 🆕 **Preview System**: Side-by-side comparison of all 5 processing methods
+- 🎯 **Click to Select**: Choose the best result by clicking on any preview
+- 📊 **Visual Feedback**: Selected preview highlighted with blue border
+- ⚡ **One-Click Download**: Download selected method instantly
+- 🔄 **Real-time Processing**: All previews generated simultaneously
+- 🎨 **Better UI**: Improved layout with 3-column grid for previews
+- 📱 **Enhanced UX**: Clear visual indicators and intuitive interactions
 
 ## 📞 **Support**
 
